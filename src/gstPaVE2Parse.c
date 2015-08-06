@@ -54,12 +54,22 @@ static void gst_pave2parse_init(GstPaVE2Parse* parser)
 
 static void gst_pave2parse_set_property(GObject* object, guint prop_id, const GValue* value, GParamSpec* spec)
 {
-
+	GstPaVE2Parse* parse = GST_PAVE2PARSE(object);
+	switch(prop_id) {
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, spec);
+		break;
+	}
 }
 
 static void gst_pave2parse_get_property(GObject* object, guint prop_id, GValue* value, GParamSpec* spec)
 {
-
+	GstPaVE2Parse* parse = GST_PAVE2PARSE(object);
+	switch(prop_id) {
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, spec);
+		break;
+	}
 }
 
 static GstFlowReturn gst_pave2parse_chain(GstPad* pad, GstObject* parent, GstBuffer* buffer)
