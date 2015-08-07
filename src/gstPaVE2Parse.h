@@ -18,6 +18,10 @@ struct _GstPaVE2Parse
 	GstElement base_pave2parse;
 	GstPad *sinkpad;
 	GstPad *srcpad;
+
+	GstBuffer* frameBuffer;
+	gsize bytesLeft;
+	gsize offset;
 };
 
 struct _GstPaVE2ParseClass

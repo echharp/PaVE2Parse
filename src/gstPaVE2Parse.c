@@ -49,7 +49,12 @@ static void gst_pave2parse_init(GstPaVE2Parse* parser)
 	gst_pad_set_event_function(parser->sinkpad, gst_pave2parse_sink_event);
 	gst_element_add_pad(GST_ELEMENT(parser), parser->sinkpad);
 	parser->srcpad = gst_pad_new_from_static_template(&src_template, NULL);
+	gst_pad_set_event_function(parser->sinkpad, gst_pave2parse_src_event);
 	gst_element_add_pad(GST_ELEMENT(parser), parser->srcpad);
+
+	parser->frameBuffer = NULL;
+	parser->bytesLeft = 0;
+	parser->offset = 0;
 }
 
 static void gst_pave2parse_set_property(GObject* object, guint prop_id, const GValue* value, GParamSpec* spec)
@@ -72,6 +77,10 @@ static void gst_pave2parse_get_property(GObject* object, guint prop_id, GValue* 
 	}
 }
 
+#define GST_PAVE2PARSE_CHAIN_EXIT(buffer, info, type, error) gst_buffer_unmap(buffer, &info); gst_buffer_unref(buffer); GST_##type(error); return GST_FLOW_ERROR
+#define GST_PAVE2PARSE_CHAIN_ERROR(buffer, info, error) GST_PAVE2PARSE_CHAIN_EXIT(buffer, info, ERROR, error)
+#define GST_PAVE2PARSE_CHAIN_WARN(buffer, info, error) GST_PAVE2PARSE_CHAIN_EXIT(buffer, info, WARNING, error)
+
 static GstFlowReturn gst_pave2parse_chain(GstPad* pad, GstObject* parent, GstBuffer* buffer)
 {
 	GstPaVE2Parse* parse = GST_PAVE2PARSE(parent);
@@ -80,9 +89,40 @@ static GstFlowReturn gst_pave2parse_chain(GstPad* pad, GstObject* parent, GstBuf
 		GST_ERROR("Pad is invalid");
 		return GST_FLOW_ERROR;
 	}
-	GST_DEBUG("Received %d bytes", gst_buffer_get_size(buffer));
-	return gst_pad_push(parse->srcpad, buffer);
+
+	GstMapInfo info;
+	if(!gst_buffer_map(buffer, &info, GST_MAP_READ))
+	{
+		GST_ERROR("Could not map buffer");
+		return GST_FLOW_ERROR;
+	}
+	// If frameBuffer is NULL means that we are waiting for a header, else its a frame
+	if(parse->frameBuffer == NULL)
+	{
+		// Check the size
+		if(info.size < sizeof(PaVEHeader))
+		{
+			GST_PAVE2PARSE_CHAIN_ERROR(buffer, info, "Buffer is too small to be a header")
+		}
+		PaVEHeader* header = (PaVEHeader*)info.data;
+		// Check the signature
+		if(header.signature != PAVE_HEADER_SIGNATURE_INT32 || header->header_size != sizeof(PaVEHeader))
+ 		{
+			GST_PAVE2PARSE_CHAIN_ERROR(buffer, info, "PaVE Header is invalid, will be ignored");
+		}
+		parse->frameBuffer = gst_buffer_new_allocate(NULL, header->payload_size, NULL);
+		parse->bytesLeft = header->payload_size;
+
+		// TODO Set Caps
+
+		if(header->)
+
+gst_pave2parse_chain_exit:
+	gst_buffer_unmap(buffer, &info);
+	gst_buffer_unref(buffer);
 }
+
+#undef GST_PAVE2PARSE_CHAIN_ERROR
 
 static gboolean gst_pave2parse_sink_event(GstPad* pad, GstObject* parent, GstEvent* event)
 {
